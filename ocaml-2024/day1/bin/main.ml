@@ -64,6 +64,15 @@ let rec count_distance sum = function
   | [] -> sum
   | (left, right) :: rest -> count_distance (abs (left - right) + sum) rest
 
+let count_similarity_score left rightlist =
+  let cnt = List.length @@ List.filter (( = ) left) rightlist in
+  cnt * left
+
+let rec count_all_sim_scores rightlist = function
+  | [] -> 0
+  | h :: t ->
+      count_similarity_score h rightlist + count_all_sim_scores rightlist t
+
 let () =
   Printf.printf "Starting program\n";
   let pairs = file |> read_lines |> separate_lines [] |> create_pairs [] in
@@ -72,6 +81,23 @@ let () =
   let right = List.sort compare @@ snd_list [] pairs in
   let sorted_pairs = List.combine left right in
   let result = count_distance 0 sorted_pairs in
+  let sim_score = count_all_sim_scores right left in
 
   Printf.printf "\nFinal result: %d\n" result;
+  print_int result;
+  Printf.printf "\nFinal Sim Score: %d\n" sim_score;
+  print_int result;
+
+  Printf.printf "Starting Test \n";
+  let pairs = test_file |> read_lines |> separate_lines [] |> create_pairs [] in
+
+  let left = List.sort compare @@ fst_list [] pairs in
+  let right = List.sort compare @@ snd_list [] pairs in
+  let sorted_pairs = List.combine left right in
+  let result = count_distance 0 sorted_pairs in
+  let sim_score = count_all_sim_scores right left in
+
+  Printf.printf "\nFinal result: %d\n" result;
+  print_int result;
+  Printf.printf "\nFinal Sim Score: %d\n" sim_score;
   print_int result
