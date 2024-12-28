@@ -77,6 +77,10 @@ module DayOne = struct
 end
 
 module DayTwo = struct
+  [@@@warning "-32"]
+
+  let file = "bin/input_two"
+  let test_file = "bin/test_two"
   let split_on_space = String.split_on_char ' '
   let split_on_space_list lines = List.map split_on_space lines
 
@@ -107,43 +111,61 @@ module DayTwo = struct
 
   let is_safe x = asc x || desc x
   let not_safe x = not (asc x || desc x)
+
+  let get_result () =
+    let codes =
+      file |> DayOne.read_lines |> split_on_space_list
+      |> List.map (List.map int_of_string)
+    in
+
+    let safe = codes |> List.filter is_safe in
+    let unsafe = codes |> List.filter not_safe in
+    let unsafe_muts =
+      List.map (fun lst -> create_all_muts 0 (List.length lst) [] lst) unsafe
+    in
+    let new_safe = List.filter (List.exists is_safe) unsafe_muts in
+    List.length safe + List.length new_safe
 end
 
-let file = "bin/input_two"
-let test_file = "bin/test_two"
+module DayThree = struct
+  [@@@warning "-32"]
+
+  let file = "bin/input_three"
+  let test_file = "bin/test_three"
+  let pat = Str.regexp "mul(\\([1-9][0-9]*\\),\\([1-9][0-9]*\\))"
+
+  let find_uncorrupted pat haystack =
+    let rec find_all pos acc =
+      try
+        let pos = Str.search_forward pat haystack pos in
+        let match1 = int_of_string @@ Str.matched_group 1 haystack in
+        let match2 = int_of_string @@ Str.matched_group 2 haystack in
+        find_all (pos + 1) ((match1, match2) :: acc)
+      with Not_found -> List.rev acc
+    in
+
+    find_all 0 []
+
+  let read_whole_file filename =
+    let ch = open_in filename in
+    let s = really_input_string ch (in_channel_length ch) in
+    close_in ch;
+    s
+
+  let mul_tuple = function fst, snd -> fst * snd
+
+  let _get_result fp =
+    read_whole_file fp |> find_uncorrupted pat |> List.map mul_tuple
+    |> List.fold_left ( + ) 0
+
+  let get_test_result () = _get_result test_file
+  let get_result () = _get_result file
+end
 
 let () =
   Printf.printf "Starting program\n";
-  let codes =
-    file |> DayOne.read_lines |> DayTwo.split_on_space_list
-    |> List.map (List.map int_of_string)
-  in
+  let result = DayThree.get_result () in
+  let test = DayThree.get_test_result () in
 
-  let safe = codes |> List.filter DayTwo.is_safe in
-  let unsafe = codes |> List.filter DayTwo.not_safe in
-  let unsafe_muts =
-    List.map
-      (fun lst -> DayTwo.create_all_muts 0 (List.length lst) [] lst)
-      unsafe
-  in
-  let new_safe = List.filter (List.exists DayTwo.is_safe) unsafe_muts in
-  let result = List.length safe + List.length new_safe in
-
-  Printf.printf "\nFinal result: %d\n" result;
-
-  let codes =
-    test_file |> DayOne.read_lines |> DayTwo.split_on_space_list
-    |> List.map (List.map int_of_string)
-  in
-
-  let safe = codes |> List.filter DayTwo.is_safe in
-  let unsafe = codes |> List.filter DayTwo.not_safe in
-  let unsafe_muts =
-    List.map
-      (fun lst -> DayTwo.create_all_muts 0 (List.length lst) [] lst)
-      unsafe
-  in
-  let new_safe = List.filter (List.exists DayTwo.is_safe) unsafe_muts in
-  let result = List.length safe + List.length new_safe in
-
-  Printf.printf "\nTest result: %d\n" result
+  Printf.printf "\nTest result: %d\n" test;
+  Printf.printf "\n Actual result: %d\n" result
