@@ -99,6 +99,14 @@ module DayTwo = struct
     | h :: t -> if h < last && _bounded_desc h last then _desc h t else false
 
   let desc = function [] -> true | h :: t -> _desc h t
+  let create_mut idx lst = List.filteri (fun i _ -> i <> idx) lst
+
+  let rec create_all_muts idx up_bound acc lst =
+    if idx >= up_bound then acc
+    else create_all_muts (idx + 1) up_bound (create_mut idx lst :: acc) lst
+
+  let is_safe x = asc x || desc x
+  let not_safe x = not (asc x || desc x)
 end
 
 let file = "bin/input_two"
@@ -106,18 +114,36 @@ let test_file = "bin/test_two"
 
 let () =
   Printf.printf "Starting program\n";
-  let result =
+  let codes =
     file |> DayOne.read_lines |> DayTwo.split_on_space_list
     |> List.map (List.map int_of_string)
-    |> List.filter (fun x -> DayTwo.asc x || DayTwo.desc x)
-    |> List.length
   in
+
+  let safe = codes |> List.filter DayTwo.is_safe in
+  let unsafe = codes |> List.filter DayTwo.not_safe in
+  let unsafe_muts =
+    List.map
+      (fun lst -> DayTwo.create_all_muts 0 (List.length lst) [] lst)
+      unsafe
+  in
+  let new_safe = List.filter (List.exists DayTwo.is_safe) unsafe_muts in
+  let result = List.length safe + List.length new_safe in
+
   Printf.printf "\nFinal result: %d\n" result;
 
-  let result =
+  let codes =
     test_file |> DayOne.read_lines |> DayTwo.split_on_space_list
     |> List.map (List.map int_of_string)
-    |> List.filter (fun x -> DayTwo.asc x || DayTwo.desc x)
-    |> List.length
   in
+
+  let safe = codes |> List.filter DayTwo.is_safe in
+  let unsafe = codes |> List.filter DayTwo.not_safe in
+  let unsafe_muts =
+    List.map
+      (fun lst -> DayTwo.create_all_muts 0 (List.length lst) [] lst)
+      unsafe
+  in
+  let new_safe = List.filter (List.exists DayTwo.is_safe) unsafe_muts in
+  let result = List.length safe + List.length new_safe in
+
   Printf.printf "\nTest result: %d\n" result
