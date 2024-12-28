@@ -1,8 +1,8 @@
-let file = "bin/input"
-let test_file = "bin/test"
-let is_digit = function '0' .. '9' -> true | _ -> false
-
 module DayOne = struct
+  [@@@warning "-32"]
+
+  let is_digit = function '0' .. '9' -> true | _ -> false
+
   let read_lines filename =
     let ichan = open_in filename in
     let try_read () = try Some (input_line ichan) with End_of_file -> None in
@@ -76,33 +76,48 @@ module DayOne = struct
         count_similarity_score h rightlist + count_all_sim_scores rightlist t
 end
 
+module DayTwo = struct
+  let split_on_space = String.split_on_char ' '
+  let split_on_space_list lines = List.map split_on_space lines
+
+  let _bounded_asc curr last =
+    let diff = curr - last in
+    diff < 4
+
+  let rec _asc last = function
+    | [] -> true
+    | h :: t -> if h > last && _bounded_asc h last then _asc h t else false
+
+  let asc = function [] -> true | h :: t -> _asc h t
+
+  let _bounded_desc curr last =
+    let diff = last - curr in
+    diff < 4
+
+  let rec _desc last = function
+    | [] -> true
+    | h :: t -> if h < last && _bounded_desc h last then _desc h t else false
+
+  let desc = function [] -> true | h :: t -> _desc h t
+end
+
+let file = "bin/input_two"
+let test_file = "bin/test_two"
+
 let () =
   Printf.printf "Starting program\n";
-  let pairs =
-    file |> DayOne.read_lines |> DayOne.separate_lines []
-    |> DayOne.create_pairs []
+  let result =
+    file |> DayOne.read_lines |> DayTwo.split_on_space_list
+    |> List.map (List.map int_of_string)
+    |> List.filter (fun x -> DayTwo.asc x || DayTwo.desc x)
+    |> List.length
   in
-  let left = List.sort compare @@ DayOne.fst_list [] pairs in
-  let right = List.sort compare @@ DayOne.snd_list [] pairs in
-  let sorted_pairs = List.combine left right in
-  let result = DayOne.count_distance 0 sorted_pairs in
-  let sim_score = DayOne.count_all_sim_scores right left in
   Printf.printf "\nFinal result: %d\n" result;
-  print_int result;
-  Printf.printf "\nFinal Sim Score: %d\n" sim_score;
-  print_int result;
 
-  Printf.printf "Starting Test \n";
-  let pairs =
-    test_file |> DayOne.read_lines |> DayOne.separate_lines []
-    |> DayOne.create_pairs []
+  let result =
+    test_file |> DayOne.read_lines |> DayTwo.split_on_space_list
+    |> List.map (List.map int_of_string)
+    |> List.filter (fun x -> DayTwo.asc x || DayTwo.desc x)
+    |> List.length
   in
-  let left = List.sort compare @@ DayOne.fst_list [] pairs in
-  let right = List.sort compare @@ DayOne.snd_list [] pairs in
-  let sorted_pairs = List.combine left right in
-  let result = DayOne.count_distance 0 sorted_pairs in
-  let sim_score = DayOne.count_all_sim_scores right left in
-  Printf.printf "\nFinal result: %d\n" result;
-  print_int result;
-  Printf.printf "\nFinal Sim Score: %d\n" sim_score;
-  print_int result
+  Printf.printf "\nTest result: %d\n" result
