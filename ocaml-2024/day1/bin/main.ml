@@ -134,12 +134,20 @@ module DayThree = struct
   let test_file = "bin/test_three"
   let pat = Str.regexp "mul(\\([1-9][0-9]*\\),\\([1-9][0-9]*\\))"
 
+  let split_and_collect s =
+    let do_pat = Str.regexp "do()" in
+    let dont_pat = Str.regexp "don't()" in
+    let split_and_cut str = List.nth (Str.split dont_pat str) 0 in
+    let splits = List.map split_and_cut @@ Str.split do_pat s in
+    List.fold_left ( ^ ) "" splits
+
   let find_uncorrupted pat haystack =
+    let clean_haystack = split_and_collect haystack in
     let rec find_all pos acc =
       try
-        let pos = Str.search_forward pat haystack pos in
-        let match1 = int_of_string @@ Str.matched_group 1 haystack in
-        let match2 = int_of_string @@ Str.matched_group 2 haystack in
+        let pos = Str.search_forward pat clean_haystack pos in
+        let match1 = int_of_string @@ Str.matched_group 1 clean_haystack in
+        let match2 = int_of_string @@ Str.matched_group 2 clean_haystack in
         find_all (pos + 1) ((match1, match2) :: acc)
       with Not_found -> List.rev acc
     in
