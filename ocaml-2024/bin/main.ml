@@ -79,8 +79,8 @@ end
 module DayTwo = struct
   [@@@warning "-32"]
 
-  let file = "bin/input_two"
-  let test_file = "bin/test_two"
+  let file = "bin/input/input_two"
+  let test_file = "bin/test/test_two"
   let split_on_space = String.split_on_char ' '
   let split_on_space_list lines = List.map split_on_space lines
 
@@ -130,8 +130,8 @@ end
 module DayThree = struct
   [@@@warning "-32"]
 
-  let file = "bin/input_three"
-  let test_file = "bin/test_three"
+  let file = "bin/input/input_three"
+  let test_file = "bin/test/test_three"
   let pat = Str.regexp "mul(\\([1-9][0-9]*\\),\\([1-9][0-9]*\\))"
 
   let split_and_collect s =
@@ -170,10 +170,75 @@ module DayThree = struct
   let get_result () = _get_result file
 end
 
+module DayFour = struct
+  [@@@warning "-32"]
+
+  let file = "bin/input/input_four"
+  let test_file = "bin/test/test_four"
+  let word_to_find = "xmas"
+  let left x y = (x - 1, y)
+  let right x y = (x + 1, y)
+  let up x y = (x, y - 1)
+  let down x y = (x, y + 1)
+  let up_left x y = (x - 1, y - 1)
+  let up_right x y = (x + 1, y - 1)
+  let down_left x y = (x - 1, y + 1)
+  let down_right x y = (x + 1, y + 1)
+
+  let check_letter x y crs letter =
+    let col = List.nth crs x in
+    let found = String.get col y in
+    found = letter
+
+  let rec walk_check f x y crs letter_pos =
+    if letter_pos >= String.length word_to_find then true
+    else
+      let new_x, new_y = f x y in
+      let searched_letter = String.get word_to_find letter_pos in
+      let found = check_letter new_x new_y crs searched_letter in
+      if found then walk_check f new_x new_y crs @@ (letter_pos + 1) else false
+
+  let find_word h w x y crs =
+    let word_len = String.length word_to_find in
+    let directions =
+      [
+        (left, x >= word_len);
+        (right, w - x >= word_len);
+        (up, y >= word_len);
+        (down, h - y >= word_len);
+        (up_left, x >= word_len && y >= word_len);
+        (up_right, w - x >= word_len && y >= word_len);
+        (down_left, x >= word_len && h - y >= word_len);
+        (down_right, w - x >= word_len && h - y >= word_len);
+      ]
+    in
+    List.fold_left
+      (fun acc (f, cond) ->
+        if cond && walk_check f x y crs 1 then acc + 1 else acc)
+      0 directions
+
+  let rec walk_crossword h w x y crs acc =
+    let col = List.nth crs x in
+    let found = String.get col y in
+    let acc = if found = 'x' then acc + find_word h w x y crs else acc in
+
+    if x <= w then walk_crossword h w (x + 1) y crs acc
+    else if y <= h then walk_crossword h w 0 (y + 1) crs acc
+    else acc
+
+  let _get_result fp =
+    let lines = DayOne.read_lines fp in
+    let height = List.length lines in
+    let width = String.length @@ List.nth lines 0 in
+    walk_crossword height width 0 0 lines 0
+
+  let get_test_result () = _get_result test_file
+  let get_result () = _get_result file
+end
+
 let () =
   Printf.printf "Starting program\n";
-  let result = DayThree.get_result () in
-  let test = DayThree.get_test_result () in
+  let test = DayFour.get_test_result () in
 
-  Printf.printf "\nTest result: %d\n" test;
-  Printf.printf "\n Actual result: %d\n" result
+  Printf.printf "\nTest result: %d\n" test
+(* Printf.printf "\n Actual result: %d\n" result *)
