@@ -173,17 +173,75 @@ end
 module DayFour = struct
   [@@@warning "-32"]
 
+  type word_result = { start_pos : int * int; direction : string }
+
   let file = "bin/input/input_four"
   let test_file = "bin/test/test_four"
-  let word_to_find = "XMAS"
-  let left x y = (x - 1, y)
-  let right x y = (x + 1, y)
-  let up x y = (x, y - 1)
-  let down x y = (x, y + 1)
-  let up_left x y = (x - 1, y - 1)
-  let up_right x y = (x + 1, y - 1)
-  let down_left x y = (x - 1, y + 1)
-  let down_right x y = (x + 1, y + 1)
+  let word_to_find = "MAS"
+
+  type direction_fn = int -> int -> int * int
+
+  module Direction = struct
+    type t = direction_fn
+
+    let up_left x y = (x - 1, y - 1)
+    let up_right x y = (x + 1, y - 1)
+    let down_left x y = (x - 1, y + 1)
+    let down_right x y = (x + 1, y + 1)
+
+    let to_string (dir : t) : string =
+      match dir with
+      | d when d == up_left -> "up_left"
+      | d when d == up_right -> "up_right"
+      | d when d == down_left -> "down_left"
+      | d when d == down_right -> "down_right"
+      | _ -> failwith "Unknown direction"
+
+    let of_string (s : string) : t =
+      match s with
+      | "up_left" -> up_left
+      | "up_right" -> up_right
+      | "down_left" -> down_left
+      | "down_right" -> down_right
+      | _ -> failwith "Invalid direction string"
+
+    let opposite (dir : string) : t * t =
+      match dir with
+      | "up_left" -> (up_right, down_left)
+      | "up_right" -> (up_left, down_right)
+      | "down_left" -> (down_right, up_left)
+      | "down_right" -> (down_left, up_right)
+      | _ -> failwith "Invalid direction string"
+  end
+
+  let a_of_result res =
+    let x, y = res.start_pos in
+    Direction.of_string res.direction x y
+
+  let cross_of_result res crs =
+    let x_of_a, y_of_a = a_of_result res in
+    let one_fn, two_fn = Direction.opposite res.direction in
+    let x_of_alt_one, y_of_alt_one = one_fn x_of_a y_of_a in
+    let x_of_alt_two, y_of_alt_two = two_fn x_of_a y_of_a in
+
+    let get_char x y = String.get (List.nth crs y) x in
+
+    match
+      (get_char x_of_alt_one y_of_alt_one, get_char x_of_alt_two y_of_alt_two)
+    with
+    | 'M', 'S' ->
+        Some
+          {
+            start_pos = (x_of_alt_one, y_of_alt_one);
+            direction = Direction.to_string one_fn;
+          }
+    | 'S', 'M' ->
+        Some
+          {
+            start_pos = (x_of_alt_two, y_of_alt_two);
+            direction = Direction.to_string two_fn;
+          }
+    | _ -> None
 
   let check_letter x y crs letter =
     Printf.printf "Checking letter at position (%d, %d): expecting '%c'\n" x y
@@ -209,47 +267,60 @@ module DayFour = struct
     let word_len = String.length word_to_find in
     let directions =
       [
-        (left, x >= word_len - 1, "left");
-        (right, w - x >= word_len, "right");
-        (up, y >= word_len - 1, "up");
-        (down, h - y >= word_len, "down");
-        (up_left, x >= word_len - 1 && y >= word_len - 1, "up_left");
-        (up_right, w - x >= word_len && y >= word_len - 1, "up_right");
-        (down_left, x >= word_len - 1 && h - y >= word_len, "down_left");
-        (down_right, w - x >= word_len && h - y >= word_len, "down_right");
+        (Direction.up_left, x >= word_len - 1 && y >= word_len - 1, "up_left");
+        (Direction.up_right, w - x >= word_len && y >= word_len - 1, "up_right");
+        ( Direction.down_left,
+          x >= word_len - 1 && h - y >= word_len,
+          "down_left" );
+        ( Direction.down_right,
+          w - x >= word_len && h - y >= word_len,
+          "down_right" );
       ]
     in
-
-    let result =
-      List.fold_left
-        (fun acc (f, cond, dir_name) ->
-          Printf.printf "Checking direction: %s, condition: %b\n" dir_name cond;
-          if cond && walk_check f x y crs 1 then (
-            Printf.printf "Found word in direction!\n";
-            acc + 1)
-          else acc)
-        0 directions
-    in
-    Printf.printf "Found %d instances at this position\n" result;
-    result
+    List.fold_left
+      (fun acc (f, cond, dir_name) ->
+        Printf.printf "Checking direction: %s, condition: %b\n" dir_name cond;
+        if cond && walk_check f x y crs 1 then (
+          let result = { start_pos = (x, y); direction = dir_name } in
+          Printf.printf "Found word in direction %s!\n" dir_name;
+          match cross_of_result result crs with
+          | Some c -> (result, c) :: acc
+          | None -> acc)
+        else acc)
+      [] directions
 
   let rec walk_crossword h w x y crs acc =
-    Printf.printf "\nWalking crossword at (%d, %d), current acc: %d\n" x y acc;
+    Printf.printf "\nWalking crossword at (%d, %d), current results: %d\n" x y
+      (List.length acc);
     let col = List.nth crs y in
     let found = String.get col x in
     Printf.printf "Current character: '%c'\n" found;
-    let acc = if found = 'X' then acc + find_word h w x y crs else acc in
-
+    let acc =
+      if found = 'M' then
+        let new_results = find_word h w x y crs in
+        List.append new_results acc
+      else acc
+    in
     if x < w - 1 then walk_crossword h w (x + 1) y crs acc
     else if y < h - 1 then walk_crossword h w 0 (y + 1) crs acc
     else acc
+
+  let print_results results =
+    Printf.printf "\nFound %d instances of %s:\n" (List.length results)
+      word_to_find;
+    List.iter
+      (fun result ->
+        let x, y = result.start_pos in
+        Printf.printf "- At position (%d, %d) going %s\n" x y result.direction)
+      results
 
   let get_result fp =
     let lines = DayOne.read_lines fp in
     let height = List.length lines in
     let width = String.length @@ List.nth lines 0 in
     Printf.printf "Grid dimensions: %d x %d\n" width height;
-    walk_crossword height width 0 0 lines 0
+    let results = walk_crossword height width 0 0 lines [] in
+    List.length results / 2
 
   let get_test_result () = get_result test_file
   let get_result () = get_result file
@@ -265,7 +336,7 @@ let () =
   Printf.printf "Starting program\n";
 
   let test = DayFour.get_test_result () in
+  let result = DayFour.get_result () in
   Printf.printf "\nTest result: %d\n" test;
 
-  let result = DayFour.get_result () in
   Printf.printf "\n Actual result: %d\n" result
